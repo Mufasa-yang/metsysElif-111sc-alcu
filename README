@@ -1,6 +1,6 @@
-NAME:Xiao Yang
-EMAIL:avadayang@icloud.com
-ID:104946787
+NAME: Xiao Yang,Zhengyuan Liu
+EMAIL: avadayang@icloud.com,zhengyuanliu@ucla.edu
+ID: 104946787,604945064
 
 included files;
 --lab4b.c: C source files for an embedded application that builds and runs (with no errors or warnings) on an embedded system
