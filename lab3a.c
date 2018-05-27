@@ -4,6 +4,7 @@
  ID:104946787
  */
 #include <stdio.h>
+#include<time.h>
 #include <math.h>
 #include <signal.h>
 #include <unistd.h>
@@ -125,6 +126,91 @@ void interpreInodeBitmap(int groupIndex) {
     }
 }
 
+void inodeSummary(int groupIndex)
+{
+    int groupPrev=groupIndex-1;
+    if(groupIndex==0)
+        groupPrev=0;
+    
+    struct ext2_inode * inodeTable;
+    inodeTable = (struct ext2_inode *)malloc(superblock->s_inodes_per_group*sizeof(struct ext2_inode));
+    if(inodeTable == NULL){
+        fprintf(stderr, "cannot allocate space for inodeTable \n" );
+        exit(exit_otherError);
+    }
+    if (pread(FDImage, inodeTable, superblock->s_inodes_per_group*sizeof(struct ext2_inode),  (groupPrev * superblock->s_blocks_per_group +(groupDesc+groupIndex)->bg_inode_table )* blockSize ) < 0) {
+        fprintf(stderr, "error: read block bitmap to scanUnit \n" );
+        exit(exit_otherError);
+    }
+    unsigned int i=0;
+    
+    for(i=0;i<superblock->s_inodes_per_group;i++)
+    {
+        //non-zero mode and non-zero link count
+        uint16_t mode=inodeTable[i].i_mode;
+        if(mode != 0 && inodeTable[i].i_links_count != 0 )
+        {
+            char type = '?';
+            uint16_t highestBit = mode & 0xF000;
+            switch (highestBit) {
+                case 0x8000:
+                    type='f';
+                    break;
+                case 0x4000:
+                    type='d';
+                    break;
+                case 0xA000:
+                    type='s';
+                    break;
+                default:
+                    break;
+            }
+            
+            char tmpBufLastChange[32];
+            char tmpBufModification[32];
+            char tmpBufLastAccess[32];
+            
+            long int time=inodeTable[i].i_ctime;
+            long int timeM=inodeTable[i].i_mtime;
+            long int timeA=inodeTable[i].i_atime;
+            
+            strftime(tmpBufLastChange, 32, "%m/%d/%y %H:%M:%S", localtime(&time));
+            strftime(tmpBufModification, 32, "%m/%d/%y %H:%M:%S", localtime(&timeM));
+            strftime(tmpBufLastAccess, 32, "%m/%d/%y %H:%M:%S", localtime(&timeA));
+            
+            printf("INODE,%u,%c,%o,%u,%u,%u,%s,%s,%s,%u,%u",
+                   i+1,
+                   type,
+                   mode & 0x0FFF,
+                   inodeTable[i].i_uid,
+                   inodeTable[i].i_gid,
+                   inodeTable[i].i_links_count,
+                   tmpBufLastChange,
+                   tmpBufModification,
+                   tmpBufLastAccess,
+                   inodeTable[i].i_size,
+                   inodeTable[i].i_blocks
+                   );
+            //15 block address
+            if (type == 's')//special case when symbolic link file length is less than the size of the block pointers (60 bytes)
+            {
+                if(inodeTable[i].i_size<60)
+                {
+                    //printf(",%s\n",(char *)inodeTable[i].i_block);//this just prints stored name
+                    printf(",%u\n",inodeTable[i].i_block[0]);
+                    continue;
+                }
+            }
+            int j=0;
+            for(j=0;j<15;j++)
+            {
+                printf(",%u",inodeTable[i].i_block[j]);
+            }
+            printf("\n");
+        }
+    }
+}
+
 void interpreGroup()
 {
     //printf("123\n");
@@ -169,7 +255,7 @@ void interpreGroup()
         //interpret block bitmap
         interpreBlockBitmap(i);
         interpreInodeBitmap(i);
-        
+        inodeSummary(i);
     }
     
 }
@@ -206,7 +292,7 @@ int main(int argc, char* argv[])
     //delete allocated space
     //printf("%d\n",superblock.s_first_data_block);
     free(superblock);
-    
+    free(groupDesc);
     return 0;
 
 }
