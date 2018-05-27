@@ -59,11 +59,11 @@ void interpreSuperblock()
         exit(exit_otherError);
     }
     
-    if (superblock->s_magic != EXT2_SUPER_MAGIC) {
+    if (superblock->s_magic != EXT2_SUPER_MAGIC) {//to verify is image is ext2 file system
         fprintf(stderr, "File system in image is not ext2 \n" );
         exit(exit_otherError);
     }
-    //printf("123\n");
+  
     blockSize=1024 << superblock->s_log_block_size;
     
     printf("SUPERBLOCK,%u,%u,%u,%u,%u,%u,%u\n",
@@ -132,7 +132,7 @@ void inodeSummary(int groupIndex)
     if(groupIndex==0)
         groupPrev=0;
     
-    struct ext2_inode * inodeTable;
+    struct ext2_inode * inodeTable;//each inode is stored in this table as one entry
     inodeTable = (struct ext2_inode *)malloc(superblock->s_inodes_per_group*sizeof(struct ext2_inode));
     if(inodeTable == NULL){
         fprintf(stderr, "cannot allocate space for inodeTable \n" );
@@ -144,9 +144,9 @@ void inodeSummary(int groupIndex)
     }
     unsigned int i=0;
     
-    for(i=0;i<superblock->s_inodes_per_group;i++)
+    for(i=0;i<superblock->s_inodes_per_group;i++)//every group has the same number of entries in this table
     {
-        //non-zero mode and non-zero link count
+        //only consider non-zero mode and non-zero link count
         uint16_t mode=inodeTable[i].i_mode;
         if(mode != 0 && inodeTable[i].i_links_count != 0 )
         {
@@ -202,7 +202,7 @@ void inodeSummary(int groupIndex)
                 }
             }
             int j=0;
-            for(j=0;j<15;j++)
+            for(j=0;j<15;j++)//15 address
             {
                 printf(",%u",inodeTable[i].i_block[j]);
             }
@@ -213,8 +213,8 @@ void inodeSummary(int groupIndex)
 
 void interpreGroup()
 {
-    //printf("123\n");
-    groupCount=(unsigned int)ceil((double)(superblock->s_blocks_count)/(double)(superblock->s_blocks_per_group));
+
+    groupCount=(unsigned int)ceil((double)(superblock->s_blocks_count)/(double)(superblock->s_blocks_per_group));//ceil to include last one
     
     unsigned int groupDescSize = groupCount * sizeof(struct ext2_group_desc);
     
@@ -229,7 +229,7 @@ void interpreGroup()
         exit(exit_otherError);
     }
    
-    uint32_t numOfBlocksInGroup = superblock->s_blocks_per_group;
+    uint32_t numOfBlocksInGroup = superblock->s_blocks_per_group;//normal case, if is not the last group,
     uint32_t numOfInodesInGroup = superblock->s_inodes_per_group;
     
     unsigned int i=0;
@@ -239,7 +239,7 @@ void interpreGroup()
         if(i+1==groupCount)//last one
         {
             if(i>0)
-                groupPrev=i-1;
+                groupPrev=i-1;//get how many groups in front of current one
             numOfBlocksInGroup=superblock->s_blocks_count-(groupPrev*superblock->s_blocks_per_group);
             numOfInodesInGroup=superblock->s_inodes_count -(groupPrev*superblock->s_inodes_per_group);
         }
@@ -252,10 +252,10 @@ void interpreGroup()
                (groupDesc+i)->bg_block_bitmap,
                (groupDesc+i)->bg_inode_bitmap,
                (groupDesc+i)->bg_inode_table);
-        //interpret block bitmap
-        interpreBlockBitmap(i);
-        interpreInodeBitmap(i);
-        inodeSummary(i);
+        
+        interpreBlockBitmap(i);//free block entries
+        interpreInodeBitmap(i);//free I-node entries
+        inodeSummary(i);//I-node summary
     }
     
 }
@@ -268,11 +268,10 @@ int main(int argc, char* argv[])
         exit(exit_badArgument);
     }
     
-   
     fileImage = argv[1];
     FDImage = open(fileImage, O_RDONLY);
     if (FDImage < 0) {
-        fprintf(stderr, "bad argument \n" );
+        fprintf(stderr, "cannot open image file \n" );
         exit(exit_otherError);
     }
     //allocate space for superblock
@@ -284,13 +283,9 @@ int main(int argc, char* argv[])
         exit(exit_otherError);
     }
     
-    interpreSuperblock();
+    interpreSuperblock();//superblock summary
+    interpreGroup();//group summary
     
-    
-    
-    interpreGroup();
-    //delete allocated space
-    //printf("%d\n",superblock.s_first_data_block);
     free(superblock);
     free(groupDesc);
     return 0;
