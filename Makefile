@@ -10,11 +10,8 @@ default:
 	
 build: default
 
-	
 clean:
 	rm -f lab3a *.tar.gz
 
 dist: 
-	tar -czf lab3a-104946787.tar.gz Makefile README  *.c
-
-
+	tar -czf lab3a-104946787.tar.gz lab3a.c ext2_fs.h Makefile README
