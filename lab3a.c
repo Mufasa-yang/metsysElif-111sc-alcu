@@ -22,7 +22,7 @@
 
 #define BUF_SIZE 1024
 
-#define OFFSET_SB    1024
+#define OFFSET_SB 1024
 
 int exit_badArgument = 1;
 int exit_otherError = 2;
@@ -33,23 +33,6 @@ struct ext2_group_desc* groupDesc;
 
 unsigned int blockSize=0;
 unsigned int groupCount=0;
-
-
-ssize_t
-doRead(int fd,  void *buff, size_t count)
-{
-    ssize_t res;
-    res = read (fd, buff, count);
-    if(res <0)
-    {
-        int tempErr=errno;
-        char * argument="read error:";
-        fprintf(stderr, "%s %s\n", argument,  strerror(tempErr));
-        exit(1);
-    }
-    else
-        return res;
-}
 
 void interpreSuperblock() {
     if (pread(FDImage, superblock, sizeof(struct ext2_super_block), OFFSET_SB) < 0) {
@@ -313,9 +296,9 @@ void inodeSummary(int groupIndex)
             long int timeM=inodeTable[i].i_mtime;
             long int timeA=inodeTable[i].i_atime;
 
-            strftime(tmpBufLastChange, 32, "%m/%d/%y %H:%M:%S", localtime(&time));
-            strftime(tmpBufModification, 32, "%m/%d/%y %H:%M:%S", localtime(&timeM));
-            strftime(tmpBufLastAccess, 32, "%m/%d/%y %H:%M:%S", localtime(&timeA));
+            strftime(tmpBufLastChange, 32, "%m/%d/%y %H:%M:%S", gmtime(&time));
+            strftime(tmpBufModification, 32, "%m/%d/%y %H:%M:%S", gmtime(&timeM));
+            strftime(tmpBufLastAccess, 32, "%m/%d/%y %H:%M:%S", gmtime(&timeA));
 
             printf("INODE,%u,%c,%o,%u,%u,%u,%s,%s,%s,%u,%u",
                    i+1,
@@ -412,7 +395,6 @@ void interpreGroup()
     }
 }
 
-
 int main(int argc, char* argv[])
 {
     if (argc != 2) {
@@ -443,4 +425,3 @@ int main(int argc, char* argv[])
     return 0;
 
 }
-
